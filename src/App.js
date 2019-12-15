@@ -1,13 +1,25 @@
 
 import React, { Component } from 'react';
+
+import { makeStyles } from '@material-ui/core/styles';
+import Paper from '@material-ui/core/Paper';
+import InputBase from '@material-ui/core/InputBase';
+import Divider from '@material-ui/core/Divider';
+import IconButton from '@material-ui/core/IconButton';
+import SearchIcon from '@material-ui/icons/Search';
+
+import TextField from '@material-ui/core/TextField';
+
+import Autocomplete from '@material-ui/lab/Autocomplete';
+
 import {
   BrowserRouter as Router,
   Route,
-  Link
+  Link,
+  useHistory
 } from 'react-router-dom';
 
 import {gripql} from './gripql.js'
-
 
 class Program extends Component {
   render() {
@@ -146,35 +158,95 @@ class Viewer extends React.Component {
       v = <Default gid={this.state.gid} data={this.state.data} label={this.state.label} edges={this.state.edges}/>
     }
     return (<div>
-      <div className='search-bar' >
-					<form
-						onSubmit={(e)=>{
-								e.preventDefault();
-								this.onSumbitTerm(e.target.searchValue.value);
-							}}
-					>
-						<input
-							name='searchValue'
-							type='text'
-							onChange={(e)=>{this.onInputTerm(e.target.value)}}
-						/>
-					</form>
-				</div>
       {v}
     </div>)
   }
 }
 
-class App extends Component {
-  render() {
-    return (
-      <Router>
-        <div>
-          <Route exact path='/:gid' component={Viewer}></Route>
-        </div>
-      </Router>
-    );
-  }
+
+const useStyles = makeStyles(theme => ({
+  root: {
+    padding: '2px 4px',
+    display: 'flex',
+    alignItems: 'center',
+    width: 500,
+  },
+  input: {
+    marginLeft: theme.spacing(1),
+    flex: 1,
+  },
+  iconButton: {
+    padding: 10,
+  },
+  divider: {
+    height: 28,
+    margin: 4,
+  },
+}));
+
+function SearchBar() {
+  const [inputValue, setInputValue] = React.useState('');
+  const [options, setOptions] = React.useState([]);
+  const [dstGid, setDstGid] = React.useState('');
+  let history = useHistory();
+
+  const handleChange = event => {
+    setInputValue(event.target.value);
+  };
+
+  React.useEffect(() => {
+    if (inputValue.length >= 2) {
+      gripql.query("bmeg").Index("symbol", inputValue).render(["_gid", "symbol"]).limit(20).execute(x => {
+        console.log(x)
+        setOptions( x.map( y => y.render) )
+      })
+    }
+  }, [inputValue])
+
+  const classes = useStyles();
+
+  return (
+    <Paper component="form" className={classes.root} onSubmit={(e)=>{
+        e.preventDefault();
+        //console.log(e)
+        history.push(dstGid)
+      }}>
+      <Autocomplete
+        id="bmeg-search-box"
+        options={options}
+        getOptionLabel={y => y[0] + " (" + y[1] + ")" }
+        getOptionSelected={y => { console.log("Selecting"); console.log(y)} }
+        className={classes.input}
+        onChange={(event, newValue) => {
+          console.log(newValue);
+          setDstGid(newValue[0])
+        }}
+        renderInput={params => (
+          <TextField {...params} label="Search BMEG"
+          margin="normal" variant="outlined"
+          name="searchValue"
+          fullWidth onChange={handleChange} />
+        )}
+      />
+       <IconButton type="submit" className={classes.iconButton} aria-label="search">
+         <SearchIcon />
+       </IconButton>
+     </Paper>
+  )
+}
+
+
+function App() {
+  return (
+    <div>
+    <Router>
+      <SearchBar/>
+      <div>
+        <Route exact path='/:gid' component={Viewer}></Route>
+      </div>
+    </Router>
+    </div>
+  );
 }
 
 export default App;
