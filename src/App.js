@@ -21,146 +21,122 @@ import {
 
 import {gripql} from './gripql.js'
 
-class Program extends Component {
-  render() {
-    var projects = this.props.edges.map( (x, index) =>
+function Program(props) {
+    var projects = props.edges.map( (x, index) =>
       <li key={index}><Link to={x.to}>{x.to}</Link></li>
     )
     return (<div>
-      <h1>{this.props.data.program_id}</h1>
+      <h1>{props.data.program_id}</h1>
       <ul>
       {projects}
       </ul>
     </div>);
-  }
 }
 
 
-class Project extends Component {
-  render() {
-    var program = this.props.edges.filter(x => x.label == "programs").map( (x, index) =>
+function Project(props) {
+    var program = props.edges.filter(x => x.label == "programs").map( (x, index) =>
       <Link key={index} to={x.to}>{x.to}</Link>
     )
-    var cases = this.props.edges.filter(x => x.label == "cases").map( (x, index) =>
+    var cases = props.edges.filter(x => x.label == "cases").map( (x, index) =>
       <li key={index}><Link to={x.to}>{x.to}</Link></li>
     )
     return (<div>
       {program}
-      <h1>{this.props.data.project_id}</h1>
+      <h1>{props.data.project_id}</h1>
       <h1>Cases</h1>
       <ul>
       {cases}
       </ul>
     </div>);
-  }
 }
 
-class Aliquot extends Component {
-  render() {
-    var projects = this.props.edges.map( (x, index) =>
+function Aliquot(props) {
+    var projects = props.edges.map( (x, index) =>
       <li key={index}><Link to={x.to}>{x.to}</Link></li>
     )
     return (<div>
-      <h1>{this.props.data.submitter_id}</h1>
+      <h1>{props.data.submitter_id}</h1>
       <ul>
       {projects}
       </ul>
     </div>);
-  }
 }
 
 
-class Default extends Component {
-  render() {
-    var projects = this.props.edges.map( (x, index) =>
+function Default(props) {
+    var projects = props.edges.map( (x, index) =>
       <li key={index}><Link to={x.to}>{x.to}</Link> - {x.label}</li>
     )
     return (<div>
-      <h1>{this.props.gid} : {this.props.label}</h1>
+      <h1>{props.gid} : {props.label}</h1>
       <ul>
       {projects}
       </ul>
     </div>);
-  }
 }
 
-class Viewer extends React.Component {
+function Gene(props) {
+  var transcripts = props.edges.filter(x => x.label == "transcripts").map( (x, index) =>
+    <li key={index}><Link to={x.to}>{x.to}</Link></li>
+  )
+  return (<div>
+    <h1>{props.gid} : {props.data.symbol}</h1>
+    <h3>{props.data.description}</h3>
+    <h2>Transcripts</h2>
+    <ul>
+    {transcripts}
+    </ul>
+  </div>);
+}
 
-  constructor(props) {
-     super(props);
-     this.state = {
-       gid: null,
-       label: null,
-       data: null,
-       edges: null,
-       isLoaded: false
-     };
-     this.getVertexData = this.getVertexData.bind(this);
-  }
 
-  getVertexData(gid) {
-    gripql.query("bmeg").V(gid).execute(x => {
-      console.log(x)
-      if (x.length > 0) {
-        gripql.query("bmeg").V(gid).outE().execute(y => {
-          var edges = y.map( z => z.edge )
-          this.setState({
-            gid: gid,
-            label: x[0].vertex.label,
-            data: x[0].vertex.data,
-            edges: edges,
-            isLoaded: true
+function BMEGViewer(props) {
+  const [vertex, setVertex] = React.useState({"label": "", "data" : null, "edges" : null});
+
+  let gid = props.match.params.gid;
+
+  React.useEffect(() => {
+    //console.log(props)
+    if (gid.length > 0) {
+      gripql.query("bmeg").V(gid).execute(x => {
+        if (x.length > 0) {
+          gripql.query("bmeg").V(gid).outE().execute(y => {
+            var edges = y.map( z => z.edge )
+            setVertex({
+              "label": x[0].vertex.label,
+              "data": x[0].vertex.data,
+              "edges" : edges
+            })
           })
-        })
-      } else {
-        this.setState({
-          gid: gid,
-          label: null,
-          data: null,
-          edges: null,
-          isLoaded: true
-        })
-      }
-    })
-  }
-
-  componentDidMount() {
-    if (this.props.match.params.gid.length > 0) {
-      this.getVertexData(this.props.match.params.gid)
+        } else {
+          setVertex({"label": "", "data" : null, "edges" : null})
+        }
+      })
     }
-  }
+  }, [props.match])
 
-  componentDidUpdate(prevProps) {
-    if (this.state.gid !== this.props.match.params.gid) {
-      this.getVertexData(this.props.match.params.gid)
-    }
+  if (vertex.label == '') {
+    return (<div>Test</div>)
   }
+  var v
+  if (vertex.label == "Program") {
+    v = <Program data={vertex.data} edges={vertex.edges}/>
+  } else if (vertex.label == "Project") {
+    v = <Project gid={gid} data={vertex.data} label={vertex.label} edges={vertex.edges}/>
+  } else if (vertex.label == "Aliquot") {
+    v = <Aliquot gid={gid} data={vertex.data} label={vertex.label} edges={vertex.edges}/>
+  } else if (vertex.label == "Gene") {
+    v = <Gene gid={gid} data={vertex.data} label={vertex.label} edges={vertex.edges}/>
+  } else if (vertex.label === null) {
+    v = <div>Not Found {gid}</div>
+  } else {
+    v = <Default gid={gid} data={vertex.data} label={vertex.label} edges={vertex.edges}/>
+  }
+  return (<div>
+    {v}
+  </div>)
 
-  onInputTerm(term){
-    //this.setState({term});
-  }
-  onSumbitTerm(term){
-    //this.props.search(term,'games');
-    this.props.history.push(term);
-  }
-
-  render() {
-    var v
-    if (this.state.label == "Program") {
-      v = <Program data={this.state.data} edges={this.state.edges}/>
-    } else if (this.state.label == "Project") {
-      v = <Project gid={this.state.gid} data={this.state.data} label={this.state.label} edges={this.state.edges}/>
-    } else if (this.state.label == "Aliquot") {
-      v = <Aliquot gid={this.state.gid} data={this.state.data} label={this.state.label} edges={this.state.edges}/>
-    } else if (this.state.label === null) {
-      v = <div>Not Found {this.props.match.params.gid}</div>
-    } else {
-      v = <Default gid={this.state.gid} data={this.state.data} label={this.state.label} edges={this.state.edges}/>
-    }
-    return (<div>
-      {v}
-    </div>)
-  }
 }
 
 
@@ -190,14 +166,16 @@ function SearchBar() {
   const [dstGid, setDstGid] = React.useState('');
   let history = useHistory();
 
+  let fields =  ["submitter_id", "symbol", "program_id", "name"];
+
   const handleChange = event => {
     setInputValue(event.target.value);
   };
 
   React.useEffect(() => {
     if (inputValue.length >= 2) {
-      gripql.query("bmeg").Index("symbol", inputValue).render(["_gid", "symbol"]).limit(20).execute(x => {
-        console.log(x)
+      gripql.query("bmeg").Search("symbol", inputValue).render(["_gid", "_label", "symbol"]).limit(20).execute(x => {
+        //console.log(x)
         setOptions( x.map( y => y.render) )
       })
     }
@@ -218,7 +196,7 @@ function SearchBar() {
         getOptionSelected={y => { console.log("Selecting"); console.log(y)} }
         className={classes.input}
         onChange={(event, newValue) => {
-          console.log(newValue);
+          //console.log(newValue);
           setDstGid(newValue[0])
         }}
         renderInput={params => (
@@ -242,7 +220,7 @@ function App() {
     <Router>
       <SearchBar/>
       <div>
-        <Route exact path='/:gid' component={Viewer}></Route>
+        <Route exact path='/:gid' component={BMEGViewer}></Route>
       </div>
     </Router>
     </div>

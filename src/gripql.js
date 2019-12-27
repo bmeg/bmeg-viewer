@@ -23,8 +23,8 @@ export var gripql = {
 				this.query.push({'e': process(id)})
 				return this
 			},
-			Index: function(field,term) {
-				this.query.push({'index': {"field":field, "value":term}})
+			Search: function(fields,term) {
+				this.query.push({'search': {"fields":process(fields), "term":term}})
 				return this
 			},
 			out: function(label) {
