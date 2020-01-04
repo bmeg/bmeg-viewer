@@ -13,6 +13,12 @@ import TextField from '@material-ui/core/TextField';
 import Autocomplete from '@material-ui/lab/Autocomplete';
 
 import {
+  BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from 'recharts';
+
+import _ from 'lodash';
+
+import {
   BrowserRouter as Router,
   Route,
   Link,
@@ -20,6 +26,8 @@ import {
 } from 'react-router-dom';
 
 import {gripql} from './gripql.js'
+
+const GRAPH = "rc5";
 
 function Program(props) {
     var projects = props.edges.map( (x, index) =>
@@ -90,6 +98,34 @@ function Gene(props) {
   </div>);
 }
 
+function GeneExpression(props) {
+  const nGenes = 200;
+  var topGenes = _.slice( _.sortBy( _.toPairs(props.data.values), (x) => -x[1] ), 0, nGenes );
+  var data = _.map( topGenes, (x) => { return {"gene" : x[0], "tpm" : x[1]}} );
+
+  return (<div>
+    <h1>{props.gid}</h1>
+
+    <BarChart
+      width={800}
+      height={300}
+      data={data}
+      margin={{
+        top: 5, right: 30, left: 20, bottom: 5,
+      }}
+    >
+      <CartesianGrid strokeDasharray="3 3" />
+      <XAxis dataKey="gene" />
+      <YAxis />
+      <Tooltip />
+      <Legend />
+      <Bar dataKey="tpm" fill="#8884d8" />
+    </BarChart>
+
+    </div>)
+
+}
+
 
 function BMEGViewer(props) {
   const [vertex, setVertex] = React.useState({"label": "", "data" : null, "edges" : null});
@@ -99,9 +135,9 @@ function BMEGViewer(props) {
   React.useEffect(() => {
     //console.log(props)
     if (gid.length > 0) {
-      gripql.query("bmeg").V(gid).execute(x => {
+      gripql.query(GRAPH).V(gid).execute(x => {
         if (x.length > 0) {
-          gripql.query("bmeg").V(gid).outE().execute(y => {
+          gripql.query(GRAPH).V(gid).outE().execute(y => {
             var edges = y.map( z => z.edge )
             setVertex({
               "label": x[0].vertex.label,
@@ -128,6 +164,8 @@ function BMEGViewer(props) {
     v = <Aliquot gid={gid} data={vertex.data} label={vertex.label} edges={vertex.edges}/>
   } else if (vertex.label == "Gene") {
     v = <Gene gid={gid} data={vertex.data} label={vertex.label} edges={vertex.edges}/>
+  } else if (vertex.label == "GeneExpression") {
+    v = <GeneExpression gid={gid} data={vertex.data} label={vertex.label} edges={vertex.edges}/>
   } else if (vertex.label === null) {
     v = <div>Not Found {gid}</div>
   } else {
@@ -174,7 +212,7 @@ function SearchBar() {
 
   React.useEffect(() => {
     if (inputValue.length >= 2) {
-      gripql.query("bmeg").Search("symbol", inputValue).render(["_gid", "_label", "symbol"]).limit(20).execute(x => {
+      gripql.query(GRAPH).Search("symbol", inputValue).render(["_gid", "_label", "symbol"]).limit(20).execute(x => {
         //console.log(x)
         setOptions( x.map( y => y.render) )
       })
