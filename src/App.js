@@ -16,6 +16,8 @@ import {
   BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
 
+import LollipopPlot from 'react-mutation-plot'
+
 import _ from 'lodash';
 
 import {
@@ -88,9 +90,41 @@ function Gene(props) {
   var transcripts = props.edges.filter(x => x.label == "transcripts").map( (x, index) =>
     <li key={index}><Link to={x.to}>{x.to}</Link></li>
   )
+
+  const [lollipops, setLollipops] = React.useState([]);
+
+  React.useEffect(() => {
+    gripql.query(GRAPH).V(props.gid).out("alleles").execute( x => {
+      var l = x.map( (y,z) => {
+        var codon = Number(y.vertex.data.cds_position.split("/")[0]);
+        return {
+          'count' : z,
+          'codon' : codon,
+          'id' : y.gid,
+        }
+      });
+      setLollipops(l)
+    })
+  }, [props.gid])
+
+
+  // format at https://github.com/thehyve/react-mutation-plot/blob/master/example/src/mock/domains.json.js
+  var domains = []
+
   return (<div>
     <h1>{props.gid} : {props.data.symbol}</h1>
     <h3>{props.data.description}</h3>
+    <div>
+    <LollipopPlot
+       domains={domains}
+       lollipops={lollipops}
+       vizWidth={600}
+       vizHeight={200}
+       hugoGeneSymbol={props.data.symbol}
+       xMax={props.data.end - props.data.start} //this is wrong, it needs to be in AA length, not in DNA length
+       yMax={lollipops.length}
+     />
+    </div>
     <h2>Transcripts</h2>
     <ul>
     {transcripts}
