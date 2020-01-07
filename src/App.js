@@ -13,8 +13,10 @@ import TextField from '@material-ui/core/TextField';
 import Autocomplete from '@material-ui/lab/Autocomplete';
 
 import {
-  BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-} from 'recharts';
+    XYPlot,
+    Hint,
+    VerticalBarSeries
+} from 'react-vis';
 
 import _ from 'lodash';
 
@@ -100,27 +102,32 @@ function Gene(props) {
 
 function GeneExpression(props) {
   const nGenes = 200;
+  var [hoverVal,setHoverVal] = React.useState("")
   var topGenes = _.slice( _.sortBy( _.toPairs(props.data.values), (x) => -x[1] ), 0, nGenes );
-  var data = _.map( topGenes, (x) => { return {"gene" : x[0], "tpm" : x[1]}} );
+  var data = _.map( topGenes, (x) => { return {"x" : x[0], "y" : x[1]}} );
 
   return (<div>
     <h1>{props.gid}</h1>
 
-    <BarChart
+    <XYPlot
+      xType="ordinal"
       width={800}
       height={300}
-      data={data}
-      margin={{
-        top: 5, right: 30, left: 20, bottom: 5,
-      }}
+      getLabel={d => d.x}
+      onValueMouseOver={(v) => {setHoverVal(v.x)}}
     >
-      <CartesianGrid strokeDasharray="3 3" />
-      <XAxis dataKey="gene" />
-      <YAxis />
-      <Tooltip />
-      <Legend />
-      <Bar dataKey="tpm" fill="#8884d8" />
-    </BarChart>
+       <VerticalBarSeries
+           data={data}
+       />
+       {hoverVal != "" && (
+       <Hint value={hoverVal}>
+        <div>
+          <h3>Value of hint</h3>
+          <p>{hoverVal}</p>
+        </div>
+      </Hint>
+    )}
+   </XYPlot>
 
     </div>)
 
